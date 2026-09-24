@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0b0f19" />
+      <stop offset="50%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#030712" />
+    </linearGradient>
+    <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="50%" stop-color="#3b82f6" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fef08a" />
+      <stop offset="40%" stop-color="#facc15" />
+      <stop offset="100%" stop-color="#eab308" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Background rounded canvas -->
+  <rect width="512" height="512" rx="100" fill="url(#bg)" />
+
+  <!-- Outer Neon Shield Contour with Glow -->
+  <path d="M 256 64 C 330 64, 400 90, 416 160 C 416 280, 340 380, 256 448 C 172 380, 96 280, 96 160 C 112 90, 182 64, 256 64 Z" 
+        fill="#0f172a" stroke="url(#shieldGrad)" stroke-width="12" filter="url(#glow)" />
+
+  <!-- Inner Crest -->
+  <path d="M 256 96 C 314 96, 368 116, 382 172 C 382 268, 322 352, 256 410 C 190 352, 130 268, 130 172 C 144 116, 198 96, 256 96 Z" 
+        fill="#1e1b4b" opacity="0.85" />
+
+  <!-- Crossed Quills / Swords + Glowing Book -->
+  <g transform="translate(256, 256)">
+    <!-- Open Book Crest -->
+    <path d="M -80 -10 C -40 -30, -10 -10, 0 10 C 10 -10, 40 -30, 80 -10 L 76 70 C 36 50, 10 70, 0 85 C -10 70, -36 50, -76 70 Z" 
+          fill="#1e293b" stroke="#38bdf8" stroke-width="6" stroke-linejoin="round" />
+    
+    <!-- Central Glowing Star (CBSE Quest Star) -->
+    <polygon points="0,-75 18,-25 70,-25 28,8 45,58 0,28 -45,58 -28,8 -70,-25 -18,-25" 
+             fill="url(#goldGrad)" filter="url(#glow)" />
+             
+    <!-- Bookmark ribbon -->
+    <path d="M -10 10 L 0 55 L 10 10" fill="#f43f5e" />
+  </g>
+
+  <!-- Quest Runes / Sparkles -->
+  <circle cx="200" cy="180" r="6" fill="#38bdf8" />
+  <circle cx="312" cy="180" r="6" fill="#38bdf8" />
+  <circle cx="256" cy="380" r="8" fill="#10b981" />
+</svg>

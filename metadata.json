@@ -1,0 +1,6 @@
+{
+  "name": "BoardQuest 2027",
+  "description": "A gamified CBSE Class 10 mobile-first PWA study planner running from October 1, 2026 to March 31, 2027 with RPG levels, streaks, timetable, offline PDFs, and quests.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
