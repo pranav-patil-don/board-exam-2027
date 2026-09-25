@@ -64,7 +64,7 @@ export const RoutineView: React.FC<RoutineViewProps> = ({
   const [slotStartTime, setSlotStartTime] = useState<string>('17:00');
 
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [confirmPreset, setConfirmPreset] = useState<'SCHOOL' | 'HOLIDAY' | 'SPRINT' | null>(null);
+  const [confirmPreset, setConfirmPreset] = useState<'SCHOOL' | 'HOLIDAY' | 'SPRINT' | 'CLEAR' | null>(null);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -84,11 +84,18 @@ export const RoutineView: React.FC<RoutineViewProps> = ({
   };
 
   // Preset timetable templates
-  const applyPresetTemplate = async (templateName: 'SCHOOL' | 'HOLIDAY' | 'SPRINT') => {
+  const applyPresetTemplate = async (templateName: 'SCHOOL' | 'HOLIDAY' | 'SPRINT' | 'CLEAR') => {
     sound.playClick();
     setConfirmPreset(null);
 
     await db.routineSlots.clear();
+
+    if (templateName === 'CLEAR') {
+      setRoutineSlots([]);
+      showToast('All timetable routine slots cleared!');
+      return;
+    }
+
     const newSlots: RoutineSlot[] = [];
 
     if (templateName === 'SCHOOL') {
@@ -359,6 +366,13 @@ export const RoutineView: React.FC<RoutineViewProps> = ({
                   className="px-2.5 py-1 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[11px] font-medium transition"
                 >
                   Pre-board Sprint
+                </button>
+                <button
+                  onClick={() => setConfirmPreset('CLEAR')}
+                  className="px-2 py-1 rounded-lg bg-rose-950/40 text-rose-300 border border-rose-500/30 text-[11px] font-medium hover:bg-rose-900/40 transition"
+                  title="Clear all routine slots"
+                >
+                  Clear All
                 </button>
               </>
             )}

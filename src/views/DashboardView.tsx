@@ -16,7 +16,7 @@ import {
   formatDateToHuman,
   addDays,
 } from '../utils/dateUtils';
-import { db } from '../db/database';
+import { db, resetTodayQuests } from '../db/database';
 import { sound } from '../utils/sound';
 import { fireSubtleConfetti } from '../utils/confetti';
 import {
@@ -32,6 +32,7 @@ import {
   Calendar,
   ChevronRight,
   BookOpen,
+  RotateCcw,
 } from 'lucide-react';
 import { PomodoroTimerModal } from '../components/PomodoroTimerModal';
 
@@ -181,6 +182,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     setShowQuickAdd(false);
   };
 
+  const handleResetQuests = async () => {
+    sound.playClick();
+    await resetTodayQuests(currentSimulatedDate);
+    await loadData();
+    const prof = await db.userProfile.get(1);
+    if (prof) onUpdateProfile(prof);
+  };
+
   // Local Leaderboard stats: Past 7 days vs Today
   const todayMinutes = studyLogs
     .filter((l) => l.dateStr === currentSimulatedDate)
@@ -325,10 +334,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="flex items-center gap-2">
             <button
+              onClick={handleResetQuests}
+              title="Reset quests for this day to uncompleted"
+              className="text-xs font-semibold text-slate-400 hover:text-cyan-300 transition flex items-center gap-1 py-1 px-1.5 rounded-lg hover:bg-slate-800"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset</span>
+            </button>
+            <button
               onClick={onOpenCatchUp}
               className="text-xs font-semibold text-slate-400 hover:text-cyan-300 transition"
             >
-              Catch-up Mode
+              Catch-up
             </button>
             <button
               onClick={() => setShowQuickAdd(!showQuickAdd)}

@@ -29,6 +29,7 @@ export default function App() {
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [currentSimulatedDate, setCurrentSimulatedDate] = useState<string>(getStudyDate());
   const [selectedSubjectId, setSelectedSubjectId] = useState<string | null>(null);
+  const [dataVersion, setDataVersion] = useState<number>(0);
 
   // Catch-Up Modal
   const [showCatchUpModal, setShowCatchUpModal] = useState<boolean>(false);
@@ -60,6 +61,7 @@ export default function App() {
 
     const subjs = await db.subjects.orderBy('order').toArray();
     setSubjects(subjs);
+    setDataVersion((v) => v + 1);
   };
 
   const handleUpdateProfile = async (updated: Partial<UserProfile>) => {
@@ -126,6 +128,7 @@ export default function App() {
       <main className="flex-1 overflow-x-hidden">
         {activeTab === 'dashboard' && (
           <DashboardView
+            key={`dash-${dataVersion}`}
             profile={profile}
             subjects={subjects}
             currentSimulatedDate={currentSimulatedDate}
@@ -138,6 +141,7 @@ export default function App() {
 
         {activeTab === 'subjects' && (
           <SubjectsView
+            key={`subj-${dataVersion}`}
             subjects={subjects}
             onUpdateSubjectsList={loadState}
             selectedSubjectId={selectedSubjectId}
@@ -147,6 +151,7 @@ export default function App() {
 
         {activeTab === 'routine' && (
           <RoutineView
+            key={`rout-${dataVersion}`}
             subjects={subjects}
             profile={profile}
             currentSimulatedDate={currentSimulatedDate}
@@ -157,6 +162,7 @@ export default function App() {
 
         {activeTab === 'map' && (
           <JourneyMapView
+            key={`map-${dataVersion}`}
             profile={profile}
             currentSimulatedDate={currentSimulatedDate}
             onUpdateProfile={handleUpdateProfile}
@@ -169,6 +175,7 @@ export default function App() {
 
         {activeTab === 'rewards' && (
           <RewardsShopView
+            key={`shop-${dataVersion}`}
             profile={profile}
             onUpdateProfile={handleUpdateProfile}
           />
@@ -176,6 +183,7 @@ export default function App() {
 
         {activeTab === 'settings' && (
           <SettingsView
+            key={`settings-${dataVersion}`}
             profile={profile}
             onUpdateProfile={handleUpdateProfile}
             onReloadAllData={loadState}

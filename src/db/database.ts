@@ -18,6 +18,8 @@ import {
   INITIAL_ACHIEVEMENTS,
   INITIAL_SHOP_ITEMS,
   INITIAL_USER_PROFILE,
+  DEMO_USER_PROFILE,
+  DEMO_LOGS,
 } from './seedData';
 
 export class BoardQuestDatabase extends Dexie {
@@ -53,7 +55,7 @@ export const db = new BoardQuestDatabase();
 let initPromise: Promise<void> | null = null;
 
 /**
- * Initializes the database with realistic seed data if empty
+ * Initializes the database with clean fresh Class 10 curriculum
  */
 export async function initializeDatabase(forceReset: boolean = false): Promise<void> {
   if (forceReset) {
@@ -66,18 +68,25 @@ export async function initializeDatabase(forceReset: boolean = false): Promise<v
   initPromise = (async () => {
     try {
       const profile = await db.userProfile.get(1);
-      if (!profile || forceReset) {
-        if (forceReset) {
-          await db.subjects.clear();
-          await db.chapters.clear();
-          await db.pdfs.clear();
-          await db.routineSlots.clear();
-          await db.dayTasks.clear();
-          await db.userProfile.clear();
-          await db.achievements.clear();
-          await db.shopItems.clear();
-          await db.studyLogs.clear();
-        }
+
+      // Auto-migrate from old dummy seed (Level 8, 2850 XP demo data) to clean fresh state
+      const isOldDummyProfile =
+        profile &&
+        profile.xp === 2850 &&
+        profile.level === 8 &&
+        profile.streakDays === 8 &&
+        profile.completedDayDates?.includes('2026-10-01');
+
+      if (!profile || forceReset || isOldDummyProfile) {
+        await db.subjects.clear();
+        await db.chapters.clear();
+        await db.pdfs.clear();
+        await db.routineSlots.clear();
+        await db.dayTasks.clear();
+        await db.userProfile.clear();
+        await db.achievements.clear();
+        await db.shopItems.clear();
+        await db.studyLogs.clear();
 
         await db.subjects.bulkPut(INITIAL_SUBJECTS);
         await db.chapters.bulkPut(INITIAL_CHAPTERS);
@@ -86,19 +95,6 @@ export async function initializeDatabase(forceReset: boolean = false): Promise<v
         await db.achievements.bulkPut(INITIAL_ACHIEVEMENTS);
         await db.shopItems.bulkPut(INITIAL_SHOP_ITEMS);
         await db.userProfile.put(INITIAL_USER_PROFILE);
-
-        // Seed initial logs for the past 8 days
-        const demoLogs: StudyLog[] = [
-          { id: 'log-1', dateStr: '2026-10-01', minutes: 120, subjectId: 'math', xp: 200, timestamp: Date.now() - 7 * 86400000 },
-          { id: 'log-2', dateStr: '2026-10-02', minutes: 180, subjectId: 'science', xp: 300, timestamp: Date.now() - 6 * 86400000 },
-          { id: 'log-3', dateStr: '2026-10-03', minutes: 150, subjectId: 'kannada', xp: 250, timestamp: Date.now() - 5 * 86400000 },
-          { id: 'log-4', dateStr: '2026-10-04', minutes: 210, subjectId: 'ss', xp: 350, timestamp: Date.now() - 4 * 86400000 },
-          { id: 'log-5', dateStr: '2026-10-05', minutes: 140, subjectId: 'it', xp: 220, timestamp: Date.now() - 3 * 86400000 },
-          { id: 'log-6', dateStr: '2026-10-06', minutes: 240, subjectId: 'math', xp: 400, timestamp: Date.now() - 2 * 86400000 },
-          { id: 'log-7', dateStr: '2026-10-07', minutes: 190, subjectId: 'science', xp: 310, timestamp: Date.now() - 1 * 86400000 },
-          { id: 'log-8', dateStr: '2026-10-08', minutes: 165, subjectId: 'english', xp: 280, timestamp: Date.now() },
-        ];
-        await db.studyLogs.bulkPut(demoLogs);
       }
     } catch (err) {
       console.error('Failed to initialize database:', err);
@@ -106,6 +102,146 @@ export async function initializeDatabase(forceReset: boolean = false): Promise<v
   })();
 
   return initPromise;
+}
+
+/**
+ * Resets user progress to clean Level 1 quest while preserving syllabus curriculum
+ */
+export async function resetToFreshStart(): Promise<void> {
+  initPromise = null;
+  await db.transaction('rw', [
+    db.chapters,
+    db.pdfs,
+    db.dayTasks,
+    db.userProfile,
+    db.achievements,
+    db.shopItems,
+    db.studyLogs,
+  ], async () => {
+    // 1. Reset user profile
+    await db.userProfile.put(INITIAL_USER_PROFILE);
+
+    // 2. Reset all chapter progress to NOT_STARTED
+    const chapters = await db.chapters.toArray();
+    const cleanChapters = chapters.map((c) => ({
+      ...c,
+      status: 'NOT_STARTED' as const,
+      weakTag: false,
+      lastRevisedDate: undefined,
+    }));
+    await db.chapters.bulkPut(cleanChapters);
+
+    // 3. Clear study logs & heatmap
+    await db.studyLogs.clear();
+
+    // 4. Clear all day tasks
+    await db.dayTasks.clear();
+
+    // 5. Reset achievements
+    await db.achievements.clear();
+    await db.achievements.bulkPut(INITIAL_ACHIEVEMENTS);
+
+    // 6. Reset shop items
+    await db.shopItems.clear();
+    await db.shopItems.bulkPut(INITIAL_SHOP_ITEMS);
+
+    // 7. Reset PDF test stats
+    const pdfs = await db.pdfs.toArray();
+    const cleanPdfs = pdfs.map((p) => ({
+      ...p,
+      attemptedCount: 0,
+      correctCount: 0,
+      redoCount: 0,
+    }));
+    await db.pdfs.bulkPut(cleanPdfs);
+  });
+}
+
+/**
+ * Resets quests & tasks for a specific date (e.g. today)
+ */
+export async function resetTodayQuests(currentDateStr: string): Promise<void> {
+  await db.dayTasks.where('dateStr').equals(currentDateStr).delete();
+
+  // If date was in completedDayDates, remove it
+  const profile = await db.userProfile.get(1);
+  if (profile && profile.completedDayDates?.includes(currentDateStr)) {
+    const updatedDates = profile.completedDayDates.filter((d) => d !== currentDateStr);
+    await db.userProfile.update(1, { completedDayDates: updatedDates });
+  }
+
+  // Regenerate fresh uncompleted tasks from routine slots for this weekday
+  const [y, m, d] = currentDateStr.split('-').map(Number);
+  const jsDay = new Date(y, m - 1, d).getDay();
+  const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1;
+
+  const routineSlots = await db.routineSlots.where('dayOfWeek').equals(dayOfWeek).toArray();
+  if (routineSlots.length > 0) {
+    const newTasks: DayTask[] = routineSlots.map((slot) => ({
+      id: `task-${currentDateStr}-${slot.id}`,
+      dateStr: currentDateStr,
+      routineSlotId: slot.id,
+      subjectId: slot.subjectId,
+      title: slot.topic,
+      type: slot.type,
+      completed: false,
+      xpEarned: slot.durationMinutes * 2,
+      durationMinutes: slot.durationMinutes,
+      difficulty: slot.type === 'TEST' ? 'HARD' : 'MEDIUM',
+    }));
+    await db.dayTasks.bulkPut(newTasks);
+  }
+}
+
+/**
+ * Completely wipes all database tables and storage (factory reset)
+ */
+export async function factoryResetAll(): Promise<void> {
+  initPromise = null;
+  await db.transaction('rw', [
+    db.subjects,
+    db.chapters,
+    db.pdfs,
+    db.routineSlots,
+    db.dayTasks,
+    db.userProfile,
+    db.achievements,
+    db.shopItems,
+    db.studyLogs,
+  ], async () => {
+    await db.subjects.clear();
+    await db.chapters.clear();
+    await db.pdfs.clear();
+    await db.routineSlots.clear();
+    await db.dayTasks.clear();
+    await db.userProfile.clear();
+    await db.achievements.clear();
+    await db.shopItems.clear();
+    await db.studyLogs.clear();
+
+    await db.subjects.bulkPut(INITIAL_SUBJECTS);
+    await db.chapters.bulkPut(INITIAL_CHAPTERS);
+    await db.pdfs.bulkPut(INITIAL_PDFS);
+    await db.routineSlots.bulkPut(INITIAL_ROUTINE_SLOTS);
+    await db.achievements.bulkPut(INITIAL_ACHIEVEMENTS);
+    await db.shopItems.bulkPut(INITIAL_SHOP_ITEMS);
+    await db.userProfile.put(INITIAL_USER_PROFILE);
+  });
+}
+
+/**
+ * Loads sample demo data for previewing features (optional)
+ */
+export async function loadDemoSampleData(): Promise<void> {
+  initPromise = null;
+  await db.transaction('rw', [
+    db.userProfile,
+    db.studyLogs,
+  ], async () => {
+    await db.userProfile.put(DEMO_USER_PROFILE);
+    await db.studyLogs.clear();
+    await db.studyLogs.bulkPut(DEMO_LOGS as StudyLog[]);
+  });
 }
 
 /**

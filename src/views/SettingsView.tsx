@@ -5,7 +5,12 @@ import {
   importFullDatabaseBackup,
   getStorageUsage,
   initializeDatabase,
+  resetToFreshStart,
+  resetTodayQuests,
+  factoryResetAll,
+  loadDemoSampleData,
 } from '../db/database';
+import { getStudyDate } from '../utils/dateUtils';
 import { sound } from '../utils/sound';
 import {
   Save,
@@ -18,6 +23,9 @@ import {
   Sparkles,
   ShieldCheck,
   CheckCircle2,
+  AlertTriangle,
+  Trash2,
+  RefreshCw,
 } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -42,6 +50,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   });
   const [backupStatus, setBackupStatus] = useState<string>('');
   const [notificationsAllowed, setNotificationsAllowed] = useState<boolean>(false);
+
+  // Reset confirmation states
+  const [showFreshResetConfirm, setShowFreshResetConfirm] = useState<boolean>(false);
+  const [showFactoryResetConfirm, setShowFactoryResetConfirm] = useState<boolean>(false);
+  const [showDemoConfirm, setShowDemoConfirm] = useState<boolean>(false);
 
   useEffect(() => {
     updateStorageMeter();
@@ -105,11 +118,12 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         const text = event.target?.result as string;
         await importFullDatabaseBackup(text);
         sound.playTaskComplete();
+        await updateStorageMeter();
         setBackupStatus('Vault backup successfully restored! Reloading quest data...');
         setTimeout(() => {
           setBackupStatus('');
           onReloadAllData();
-        }, 1200);
+        }, 800);
       } catch (err) {
         setBackupStatus('Failed to import backup file. Ensure it is a valid BoardQuest JSON export.');
         setTimeout(() => setBackupStatus(''), 4000);
@@ -135,17 +149,51 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     }
   };
 
-  const [showResetConfirm, setShowResetConfirm] = useState(false);
-
-  const handleResetToDemo = async () => {
+  const handleResetToFreshStart = async () => {
     sound.playClick();
-    setShowResetConfirm(false);
-    await initializeDatabase(true);
-    setBackupStatus('Reset to demo curriculum complete!');
+    setShowFreshResetConfirm(false);
+    await resetToFreshStart();
+    await updateStorageMeter();
+    setBackupStatus('✨ Quest reset to Fresh Start (Level 1, 0 XP)!');
     setTimeout(() => {
-      setBackupStatus('');
       onReloadAllData();
-    }, 1000);
+      setBackupStatus('');
+    }, 600);
+  };
+
+  const handleResetTodayQuests = async () => {
+    sound.playClick();
+    const today = getStudyDate();
+    await resetTodayQuests(today);
+    setBackupStatus("Today's quest checklist reset to uncompleted!");
+    setTimeout(() => {
+      onReloadAllData();
+      setBackupStatus('');
+    }, 600);
+  };
+
+  const handleFactoryReset = async () => {
+    sound.playClick();
+    setShowFactoryResetConfirm(false);
+    await factoryResetAll();
+    await updateStorageMeter();
+    setBackupStatus('All data completely wiped and restored to pristine start!');
+    setTimeout(() => {
+      onReloadAllData();
+      setBackupStatus('');
+    }, 600);
+  };
+
+  const handleLoadDemo = async () => {
+    sound.playClick();
+    setShowDemoConfirm(false);
+    await loadDemoSampleData();
+    await updateStorageMeter();
+    setBackupStatus('Sample demo progress loaded for feature preview!');
+    setTimeout(() => {
+      onReloadAllData();
+      setBackupStatus('');
+    }, 600);
   };
 
   return (
@@ -322,38 +370,155 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </p>
       </section>
 
-      {/* Danger Zone: Reset Data */}
-      <section className="rounded-3xl bg-slate-900/60 border border-rose-950 p-5 space-y-2">
-        <h2 className="text-xs font-bold text-rose-400 uppercase tracking-wider font-mono">
-          Danger Zone
-        </h2>
-        <p className="text-[11px] text-slate-400">
-          Restore initial CBSE Class 10 sample curriculum and demo progress.
-        </p>
-        {showResetConfirm ? (
-          <div className="flex items-center gap-2 pt-2">
-            <span className="text-xs text-rose-300 font-bold">Are you sure?</span>
-            <button
-              onClick={handleResetToDemo}
-              className="px-3 py-1.5 rounded-xl bg-rose-600 text-white text-xs font-bold hover:bg-rose-500 transition"
-            >
-              Confirm Reset
-            </button>
-            <button
-              onClick={() => setShowResetConfirm(false)}
-              className="px-3 py-1.5 rounded-xl bg-slate-800 text-slate-300 text-xs hover:bg-slate-700 transition"
-            >
-              Cancel
-            </button>
+      {/* Reset & Quest Data Management */}
+      <section className="rounded-3xl bg-slate-900 border border-slate-800 p-5 space-y-4">
+        <div>
+          <h2 className="text-sm font-bold font-display text-white flex items-center gap-2">
+            <RotateCcw className="w-4 h-4 text-cyan-400" />
+            <span>Quest Progress & Daily Resets</span>
+          </h2>
+          <p className="text-xs text-slate-400 mt-1">
+            Manage your daily quest checklists or restart your quest journey.
+          </p>
+        </div>
+
+        {/* Action 1: Reset Today's Checklist */}
+        <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-slate-700/80 flex items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-bold text-white block">Reset Today's Quests</span>
+            <span className="text-[11px] text-slate-400 block mt-0.5">
+              Uncheck all daily tasks for today and restore original routine slots.
+            </span>
           </div>
-        ) : (
           <button
-            onClick={() => setShowResetConfirm(true)}
-            className="px-3.5 py-2 rounded-xl bg-rose-950/40 text-rose-300 border border-rose-500/30 text-xs font-semibold hover:bg-rose-900/40 transition"
+            onClick={handleResetTodayQuests}
+            className="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-cyan-300 text-xs font-semibold shrink-0 transition"
           >
-            Reset to Demo Curriculum
+            Reset Today
           </button>
-        )}
+        </div>
+
+        {/* Action 2: Reset All Progress to Fresh Start (Level 1) */}
+        <div className="p-3.5 rounded-2xl bg-slate-800/60 border border-amber-500/30 space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>Reset to Fresh Start (Level 1)</span>
+              </span>
+              <span className="text-[11px] text-slate-400 block mt-0.5">
+                Resets XP to 0, Level to 1, Coins to 0, and Streak to 0. Clears past study logs and marks all syllabus chapters as Not Started. Keeps your CBSE subject list and timetable intact.
+              </span>
+            </div>
+          </div>
+
+          {showFreshResetConfirm ? (
+            <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/40 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-amber-300 font-semibold">Start fresh at Level 1?</span>
+              <button
+                onClick={handleResetToFreshStart}
+                className="px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition"
+              >
+                Yes, Reset to Level 1
+              </button>
+              <button
+                onClick={() => setShowFreshResetConfirm(false)}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowFreshResetConfirm(true)}
+              className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 text-xs font-semibold transition"
+            >
+              Reset Quest to Level 1
+            </button>
+          )}
+        </div>
+      </section>
+
+      {/* Danger Zone: Factory Wipe & Demo Tools */}
+      <section className="rounded-3xl bg-slate-900/60 border border-rose-950 p-5 space-y-4">
+        <div>
+          <h2 className="text-xs font-bold text-rose-400 uppercase tracking-wider font-mono flex items-center gap-1.5">
+            <AlertTriangle className="w-3.5 h-3.5" />
+            <span>Danger Zone & Advanced</span>
+          </h2>
+          <p className="text-[11px] text-slate-400 mt-1">
+            Permanent vault deletion or loading mock demo progress for testing.
+          </p>
+        </div>
+
+        {/* Factory Reset */}
+        <div className="p-3.5 rounded-2xl bg-rose-950/20 border border-rose-900/50 space-y-2">
+          <div>
+            <span className="text-xs font-bold text-rose-300 block">Complete Factory Reset (Wipe All Storage)</span>
+            <span className="text-[11px] text-slate-400 block mt-0.5">
+              Permanently wipes all IndexedDB tables, stored notes, custom subjects, and restores clean install.
+            </span>
+          </div>
+
+          {showFactoryResetConfirm ? (
+            <div className="p-2.5 rounded-xl bg-rose-950/60 border border-rose-600/50 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-rose-200 font-bold">Permanently erase all local data?</span>
+              <button
+                onClick={handleFactoryReset}
+                className="px-3 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold transition flex items-center gap-1"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Confirm Wipe All</span>
+              </button>
+              <button
+                onClick={() => setShowFactoryResetConfirm(false)}
+                className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowFactoryResetConfirm(true)}
+              className="px-3 py-1.5 rounded-xl bg-rose-950/40 text-rose-300 border border-rose-500/30 text-xs font-semibold hover:bg-rose-900/40 transition"
+            >
+              Factory Wipe Vault
+            </button>
+          )}
+        </div>
+
+        {/* Load Demo Data (Optional for testing) */}
+        <div className="p-3 rounded-2xl bg-slate-800/40 border border-slate-700/60 flex items-center justify-between gap-3">
+          <div>
+            <span className="text-xs font-medium text-slate-300 block">Demo & Testing Data</span>
+            <span className="text-[11px] text-slate-500 block">
+              Populate sample Level 8 stats, heatmap logs, and demo progress.
+            </span>
+          </div>
+          {showDemoConfirm ? (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                onClick={handleLoadDemo}
+                className="px-2.5 py-1 rounded-lg bg-cyan-600 text-white text-xs font-semibold"
+              >
+                Load Demo
+              </button>
+              <button
+                onClick={() => setShowDemoConfirm(false)}
+                className="px-2 py-1 rounded-lg bg-slate-800 text-slate-400 text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowDemoConfirm(true)}
+              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs shrink-0 transition"
+            >
+              Load Demo
+            </button>
+          )}
+        </div>
       </section>
     </div>
   );
